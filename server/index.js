@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
+require('dotenv').config({ path: require('path').join(__dirname, '../.env.local') });
 
 const app = express();
 const server = http.createServer(app);
@@ -49,8 +50,11 @@ const processJob = async (jobId, jobData) => {
       // Check for backlink
       const result = await checkBacklink(job.urlFrom, job.urlTo, job.anchorText);
       
+      // Get domain rating for urlFrom
+      const domainRatingResult = await getDomainRating(job.urlFrom);
+      
       // Update job with result
-      Object.assign(job, result);
+      Object.assign(job, result, domainRatingResult);
       job.status = result.found ? 'found' : 'not-found';
       
       completed++;
@@ -109,6 +113,62 @@ const normalizeUrl = (url) => {
 const normalizeText = (text) => {
   if (!text) return '';
   return text.toLowerCase().replace(/\s+/g, ' ').trim();
+};
+
+// Get domain rating from Ahrefs API
+const getDomainRating = async (url) => {
+  const AHREFS_API_KEY = process.env.AHREFS_API;
+  
+  if (!AHREFS_API_KEY) {
+    console.log('Ahrefs API key not found, skipping domain rating check');
+    return { domainRating: null, domainRatingError: 'API key not configured' };
+  }
+
+  try {
+    // Extract domain from URL
+    const domain = new URL(url).hostname;
+    
+    console.log(`Getting domain rating for ${domain} using API v3`);
+    
+    // Format current date as YYYY-MM-DD as required by API
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    const response = await axios.get(`https://api.ahrefs.com/v3/site-explorer/domain-rating?target=${encodeURIComponent(domain)}&date=${encodeURIComponent(currentDate)}`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${AHREFS_API_KEY}`
+      },
+      timeout: 10000
+    });
+
+    // Log the full response for debugging
+    console.log('Ahrefs API v3 Response:', JSON.stringify(response.data, null, 2));
+    
+    if (response.data && response.data.domain_rating && response.data.domain_rating.domain_rating !== undefined) {
+      const domainRating = response.data.domain_rating.domain_rating;
+      // Handle the special case where domain rating is -3.402823669209385e+38 (indicates no data)
+      if (domainRating < 0 || domainRating > 100) {
+        console.log(`✗ No valid domain rating data for ${domain} (value: ${domainRating})`);
+        return { domainRating: null, domainRatingError: 'No domain rating data available' };
+      }
+      console.log(`✓ Domain rating for ${domain}: ${domainRating}`);
+      return { domainRating: Math.round(domainRating), domainRatingError: null };
+    } else {
+      console.log(`✗ No domain rating data found for ${domain}`);
+      return { domainRating: null, domainRatingError: 'No domain rating data available' };
+    }
+  } catch (error) {
+    console.error(`Error getting domain rating for ${url}:`, error.message);
+    
+    // Log detailed error response if available
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      console.error('Headers:', error.response.headers);
+    }
+    
+    return { domainRating: null, domainRatingError: error.message };
+  }
 };
 
 const checkBacklink = async (urlFrom, urlTo, anchorText) => {
@@ -310,7 +370,7 @@ io.on('connection', (socket) => {
       // Re-check the backlink
       const result = await checkBacklink(jobItem.urlFrom, jobItem.urlTo, jobItem.anchorText);
       
-      // Update job with new result
+      // Update job with new result (preserve existing domain rating)
       Object.assign(jobItem, result);
       
       // Set appropriate status based on result

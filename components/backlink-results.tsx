@@ -76,9 +76,9 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
 
   const handleExportCSV = () => {
     const csv = [
-      "url_from,url_to,anchor_text,found,status,status_code,error",
+      "url_from,url_to,anchor_text,found,status,status_code,error,domain_rating,domain_rating_error",
       ...jobs.map(job => 
-        `"${job.urlFrom}","${job.urlTo}","${job.anchorText}",${job.found || false},${job.status},${job.statusCode || ''},"${job.error || ''}"`
+        `"${job.urlFrom}","${job.urlTo}","${job.anchorText}",${job.found || false},${job.status},${job.statusCode || ''},"${job.error || ''}",${job.domainRating || ''},"${job.domainRatingError || ''}"`
       )
     ].join('\n');
 
@@ -195,6 +195,7 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
             <TableHead>Anchor Text</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Status Code</TableHead>
+            <TableHead>Domain Rating</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -259,6 +260,26 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
                       <p className="break-words">{job.error}</p>
                     </TooltipContent>
                   </Tooltip>
+                )}
+              </TableCell>
+              <TableCell>
+                {job.domainRating !== undefined && job.domainRating !== null ? (
+                  <Badge variant={job.domainRating >= 50 ? "default" : job.domainRating >= 30 ? "secondary" : "outline"}>
+                    DR {job.domainRating}
+                  </Badge>
+                ) : job.domainRatingError ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-muted-foreground cursor-help underline decoration-dotted">
+                        N/A
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="break-words">{job.domainRatingError}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <span className="text-xs text-muted-foreground">-</span>
                 )}
               </TableCell>
               <TableCell>

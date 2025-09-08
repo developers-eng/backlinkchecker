@@ -14,6 +14,8 @@ export interface BacklinkJob {
   found?: boolean;
   statusCode?: number;
   error?: string;
+  domainRating?: number;
+  domainRatingError?: string;
 }
 
 export default function Home() {
