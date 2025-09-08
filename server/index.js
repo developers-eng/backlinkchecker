@@ -264,6 +264,18 @@ io.on('connection', (socket) => {
     const jobData = jobs.get(jobId);
     if (!jobData) {
       console.error(`Job ${jobId} not found for recrawl`);
+      // Inform the requesting client so UI doesn't stay stuck on "Checking..."
+      const errorJob = {
+        id: jobToRecrawl.id,
+        urlFrom: jobToRecrawl.urlFrom,
+        urlTo: jobToRecrawl.urlTo,
+        anchorText: jobToRecrawl.anchorText,
+        status: 'error',
+        found: false,
+        statusCode: null,
+        error: 'Job not found on server (it may have restarted)'
+      };
+      socket.emit('progress', { jobId, progress: null, job: errorJob });
       return;
     }
 
@@ -271,6 +283,17 @@ io.on('connection', (socket) => {
     const jobItem = jobData.jobs.find(j => j.id === jobToRecrawl.id);
     if (!jobItem) {
       console.error(`Job item ${jobToRecrawl.id} not found for recrawl`);
+      const errorJob = {
+        id: jobToRecrawl.id,
+        urlFrom: jobToRecrawl.urlFrom,
+        urlTo: jobToRecrawl.urlTo,
+        anchorText: jobToRecrawl.anchorText,
+        status: 'error',
+        found: false,
+        statusCode: null,
+        error: 'Job item not found on server'
+      };
+      socket.emit('progress', { jobId, progress: null, job: errorJob });
       return;
     }
 

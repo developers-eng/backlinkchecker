@@ -246,7 +246,7 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
               </TableCell>
               <TableCell>
                 {job.statusCode && (
-                  <span className="font-mono text-sm">{job.statusCode}</span>
+                  <span className="font-mono text-sm">{job.statusCode}&nbsp;</span>
                 )}
                 {job.error && (
                   <Tooltip>
