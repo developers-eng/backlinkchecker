@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -33,12 +33,22 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
   const [copiedCell, setCopiedCell] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[SOCKET] Creating new socket connection');
     const newSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000");
     setSocket(newSocket);
 
-    newSocket.emit("join", { jobId });
+    newSocket.on("connect", () => {
+      console.log('[SOCKET] Connected to server');
+      newSocket.emit("join", { jobId });
+      console.log('[SOCKET] Joined job room:', jobId);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log('[SOCKET] Disconnected from server');
+    });
 
     newSocket.on("progress", (data: { jobId: string; progress: number; job: BacklinkJob }) => {
+      console.log('[SOCKET] Progress update received:', data);
       if (data.jobId === jobId) {
         setProgress(data.progress);
         onJobUpdate(data.job);
@@ -46,15 +56,23 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
     });
 
     newSocket.on("complete", (data: { jobId: string; progress: number }) => {
+      console.log('[SOCKET] Job complete:', data);
       if (data.jobId === jobId) {
         setProgress(100);
       }
     });
 
+    // Test event listener
+    newSocket.on("test-response", (data) => {
+      console.log('[TEST] Server response:', data);
+    });
+
     return () => {
+      console.log('[SOCKET] Cleaning up socket connection');
       newSocket.disconnect();
     };
-  }, [jobId, onJobUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
 
   const handleExportCSV = () => {
     const csv = [
@@ -75,8 +93,28 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
     window.URL.revokeObjectURL(url);
   };
 
+  const testSocket = () => {
+    console.log('[TEST] Testing socket connection');
+    if (!socket) {
+      console.error('[TEST] No socket connection available');
+      return;
+    }
+    socket.emit('test', { message: 'Test from client', timestamp: Date.now() });
+    console.log('[TEST] Test event emitted');
+  };
+
   const handleRecrawl = (job: BacklinkJob) => {
-    if (!socket) return;
+    console.log('[RECRAWL] handleRecrawl called for job:', job.id);
+    
+    if (!socket) {
+      console.error('[RECRAWL] No socket connection available');
+      return;
+    }
+    
+    console.log('[RECRAWL] Socket connected, emitting recrawl event');
+    
+    // Test socket first
+    testSocket();
     
     // Immediately update the job status locally to show it's being recrawled
     const updatedJob = {
@@ -97,6 +135,8 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
         anchorText: job.anchorText
       }
     });
+    
+    console.log('[RECRAWL] Recrawl event emitted');
   };
 
   const copyToClipboard = (text: string, cellId: string) => {

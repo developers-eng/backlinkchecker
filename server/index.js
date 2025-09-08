@@ -250,8 +250,16 @@ io.on('connection', (socket) => {
     socket.join(jobId);
   });
 
+  // Test event to verify socket communication
+  socket.on('test', (data) => {
+    console.log('[TEST] Test event received:', data);
+    socket.emit('test-response', { message: 'Server received test event' });
+  });
+
   socket.on('recrawl', async ({ jobId, jobToRecrawl }) => {
-    console.log(`Recrawl requested for job ${jobToRecrawl.id} in ${jobId}`);
+    console.log(`[RECRAWL] Recrawl requested for job ${jobToRecrawl.id} in ${jobId}`);
+    console.log(`[RECRAWL] Socket ID: ${socket.id}`);
+    console.log(`[RECRAWL] Job data:`, { urlFrom: jobToRecrawl.urlFrom, urlTo: jobToRecrawl.urlTo });
     
     const jobData = jobs.get(jobId);
     if (!jobData) {
@@ -281,7 +289,17 @@ io.on('connection', (socket) => {
       
       // Update job with new result
       Object.assign(jobItem, result);
-      jobItem.status = result.found ? 'found' : 'not-found';
+      
+      // Set appropriate status based on result
+      if (result.error) {
+        if (result.error.includes('timeout')) {
+          jobItem.status = 'timeout';
+        } else {
+          jobItem.status = 'error';
+        }
+      } else {
+        jobItem.status = result.found ? 'found' : 'not-found';
+      }
       
       // Emit the updated result
       io.to(jobId).emit('progress', { jobId, progress: null, job: jobItem });
