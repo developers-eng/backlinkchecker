@@ -64,7 +64,14 @@ const processJob = async (jobId, jobData) => {
       
     } catch (error) {
       console.error(`Error checking backlink for job ${job.id}:`, error);
-      job.status = 'error';
+      
+      // Check if it's a timeout error
+      if (error.message && error.message.includes('timeout')) {
+        job.status = 'timeout';
+      } else {
+        job.status = 'error';
+      }
+      
       job.error = error.message;
       completed++;
       
@@ -241,6 +248,60 @@ io.on('connection', (socket) => {
   socket.on('join', ({ jobId }) => {
     console.log(`Client ${socket.id} joined job ${jobId}`);
     socket.join(jobId);
+  });
+
+  socket.on('recrawl', async ({ jobId, jobToRecrawl }) => {
+    console.log(`Recrawl requested for job ${jobToRecrawl.id} in ${jobId}`);
+    
+    const jobData = jobs.get(jobId);
+    if (!jobData) {
+      console.error(`Job ${jobId} not found for recrawl`);
+      return;
+    }
+
+    // Find the specific job item to recrawl
+    const jobItem = jobData.jobs.find(j => j.id === jobToRecrawl.id);
+    if (!jobItem) {
+      console.error(`Job item ${jobToRecrawl.id} not found for recrawl`);
+      return;
+    }
+
+    try {
+      // Reset job status
+      jobItem.status = 'checking';
+      jobItem.error = null;
+      jobItem.found = false;
+      jobItem.statusCode = null;
+
+      // Emit progress update showing it's being recrawled
+      io.to(jobId).emit('progress', { jobId, progress: null, job: jobItem });
+
+      // Re-check the backlink
+      const result = await checkBacklink(jobItem.urlFrom, jobItem.urlTo, jobItem.anchorText);
+      
+      // Update job with new result
+      Object.assign(jobItem, result);
+      jobItem.status = result.found ? 'found' : 'not-found';
+      
+      // Emit the updated result
+      io.to(jobId).emit('progress', { jobId, progress: null, job: jobItem });
+      
+      console.log(`Recrawl completed for job ${jobToRecrawl.id}`);
+    } catch (error) {
+      console.error(`Error during recrawl of job ${jobToRecrawl.id}:`, error);
+      
+      // Check if it's a timeout error
+      if (error.message && error.message.includes('timeout')) {
+        jobItem.status = 'timeout';
+      } else {
+        jobItem.status = 'error';
+      }
+      
+      jobItem.error = error.message;
+      
+      // Emit error result
+      io.to(jobId).emit('progress', { jobId, progress: null, job: jobItem });
+    }
   });
   
   socket.on('disconnect', () => {

@@ -6,7 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, MoreHorizontal, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { BacklinkJob } from "@/app/page";
 
 interface BacklinkResultsProps {
@@ -18,6 +30,7 @@ interface BacklinkResultsProps {
 export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [progress, setProgress] = useState(0);
+  const [copiedCell, setCopiedCell] = useState<string | null>(null);
 
   useEffect(() => {
     const newSocket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000");
@@ -62,6 +75,40 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
     window.URL.revokeObjectURL(url);
   };
 
+  const handleRecrawl = (job: BacklinkJob) => {
+    if (!socket) return;
+    
+    // Immediately update the job status locally to show it's being recrawled
+    const updatedJob = {
+      ...job,
+      status: 'checking' as const,
+      statusCode: undefined,
+      error: undefined,
+      found: undefined
+    };
+    onJobUpdate(updatedJob);
+    
+    socket.emit("recrawl", {
+      jobId: jobId,
+      jobToRecrawl: {
+        id: job.id,
+        urlFrom: job.urlFrom,
+        urlTo: job.urlTo,
+        anchorText: job.anchorText
+      }
+    });
+  };
+
+  const copyToClipboard = (text: string, cellId: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedCell(cellId);
+      // Clear the feedback after 2 seconds
+      setTimeout(() => setCopiedCell(null), 2000);
+    }).catch((err) => {
+      console.error('Failed to copy to clipboard:', err);
+    });
+  };
+
   const getStatusBadge = (job: BacklinkJob) => {
     switch (job.status) {
       case 'pending':
@@ -74,16 +121,19 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
         return <Badge variant="destructive">Not Found</Badge>;
       case 'error':
         return <Badge variant="destructive">Error</Badge>;
+      case 'timeout':
+        return <Badge variant="destructive">Timeout</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
   };
 
-  const completedJobs = jobs.filter(job => ['found', 'not-found', 'error'].includes(job.status)).length;
+  const completedJobs = jobs.filter(job => ['found', 'not-found', 'error', 'timeout'].includes(job.status)).length;
   const totalJobs = jobs.length;
 
   return (
-    <div className="space-y-4">
+    <TooltipProvider>
+      <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
@@ -105,19 +155,51 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
             <TableHead>Anchor Text</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Status Code</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {jobs.map((job) => (
             <TableRow key={job.id}>
               <TableCell className="font-mono text-sm max-w-xs truncate">
-                {job.urlFrom}
+                <a 
+                  href={job.urlFrom} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  {job.urlFrom}
+                </a>
               </TableCell>
               <TableCell className="font-mono text-sm max-w-xs truncate">
-                {job.urlTo}
+                <Tooltip open={copiedCell === `urlTo-${job.id}` ? true : undefined}>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors block p-1 -m-1 rounded"
+                      onClick={() => copyToClipboard(job.urlTo, `urlTo-${job.id}`)}
+                    >
+                      {job.urlTo}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {copiedCell === `urlTo-${job.id}` ? "Copied!" : "Click to copy"}
+                  </TooltipContent>
+                </Tooltip>
               </TableCell>
               <TableCell className="max-w-xs truncate">
-                {job.anchorText}
+                <Tooltip open={copiedCell === `anchorText-${job.id}` ? true : undefined}>
+                  <TooltipTrigger asChild>
+                    <span
+                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors block p-1 -m-1 rounded"
+                      onClick={() => copyToClipboard(job.anchorText, `anchorText-${job.id}`)}
+                    >
+                      {job.anchorText}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {copiedCell === `anchorText-${job.id}` ? "Copied!" : "Click to copy"}
+                  </TooltipContent>
+                </Tooltip>
               </TableCell>
               <TableCell>
                 {getStatusBadge(job)}
@@ -127,15 +209,40 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
                   <span className="font-mono text-sm">{job.statusCode}</span>
                 )}
                 {job.error && (
-                  <span className="text-sm text-destructive" title={job.error}>
-                    Error
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-sm text-destructive cursor-help underline decoration-dotted">
+                        Error
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="break-words">{job.error}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
+              </TableCell>
+              <TableCell>
+                {((job.statusCode && job.statusCode !== 200) || job.status === 'error' || job.status === 'timeout' || job.error) ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleRecrawl(job)}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Recrawl
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

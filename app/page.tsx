@@ -10,7 +10,7 @@ export interface BacklinkJob {
   urlFrom: string;
   urlTo: string;
   anchorText: string;
-  status: 'pending' | 'checking' | 'found' | 'not-found' | 'error';
+  status: 'pending' | 'checking' | 'found' | 'not-found' | 'error' | 'timeout';
   found?: boolean;
   statusCode?: number;
   error?: string;
@@ -34,7 +34,7 @@ export default function Home() {
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-2">Backlink Checker</h1>
+        <h1 className="text-4xl font-bold mb-2">MADX Backlink Checker</h1>
         <p className="text-muted-foreground">
           Check if your backlinks exist across multiple websites
         </p>
