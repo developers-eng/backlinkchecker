@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     
     // Send job to backend server
     try {
-      await fetch('http://localhost:4000/api/jobs', {
+      await fetch(`http://localhost:${process.env.PORT || 3000}/api/jobs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: backlink-checker
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_USER
+        value: madx
+      - key: APP_PW
+        fromSecret: APP_PW
+      - key: AHREFS_API
+        fromSecret: AHREFS_API

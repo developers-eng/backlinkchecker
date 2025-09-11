@@ -8,10 +8,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-    
-    // Forward the request to the backend server
-    const response = await fetch(`${backendUrl}/api/check-single`, {
+    // Since we're running everything on the same server, use localhost
+    const response = await fetch(`http://localhost:${process.env.PORT || 3000}/api/check-single`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
