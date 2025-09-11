@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "functions": {
-    "app/api/check-single/route.ts": {
+    "app/api/**/*.ts": {
       "maxDuration": 10
     }
   },

@@ -1,14 +1,28 @@
-# Backlink Checker MVP
+# MADX Backlink Checker
 
-A full-stack application for checking backlinks across multiple websites with real-time progress updates.
+A secure, full-stack application for checking backlinks across multiple websites with real-time progress updates and domain rating integration.
 
 ## Features
 
+### Core Functionality
 - **CSV Upload**: Upload a CSV file with backlink data
-- **Manual Input**: Enter backlink data manually in CSV format
+- **Manual Input**: Enter backlink data manually in CSV format  
+- **Table Input**: Spreadsheet-like table interface for data entry
 - **Real-time Updates**: Live progress updates via Socket.io
-- **Beautiful UI**: Built with Shadcn UI components
 - **Export Results**: Download results as CSV
+- **Recrawl Feature**: Re-check failed or error backlinks individually
+
+### Authentication & Security
+- **Secure Login**: Environment-based authentication system
+- **Session Management**: HTTP-only cookie sessions
+- **Protected Routes**: Application access control
+
+### Advanced Features
+- **Domain Rating**: Integration with Ahrefs API for domain rating data
+- **Error Handling**: Comprehensive error states (timeout, HTTP errors, general failures)
+- **Rate Limiting**: Respectful 1-second delays between requests
+- **Progress Tracking**: Real-time job status updates
+- **Responsive Design**: Mobile-friendly table interface
 
 ## Tech Stack
 
@@ -60,10 +74,23 @@ Terminal 2 (Frontend):
 npm run dev
 ```
 
-### 3. Access the Application
+### 3. Configure Environment
+
+Set up your environment variables in `.env.local`:
+```bash
+# Copy the example and update with your credentials
+NEXT_PUBLIC_API_URL=http://localhost:4000
+APP_USER=your_username
+APP_PW=your_password  
+AHREFS_API=your_ahrefs_api_key
+```
+
+### 4. Access the Application
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:4000
+
+**Login**: Use the credentials you set in `APP_USER` and `APP_PW` to access the application.
 
 ## Usage
 
@@ -91,56 +118,93 @@ Enter data in the same CSV format, one line per backlink.
 
 ## API Endpoints
 
+### Authentication API
+- `POST /api/auth/login` - User authentication
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/status` - Check authentication status
+
 ### Frontend API
 - `POST /api/check` - Submit backlink check job
+- `POST /api/check-single` - Check single backlink
 
 ### Backend API
 - `POST /api/jobs` - Create new job
 - `GET /api/jobs/:jobId` - Get job status
+- `POST /api/recrawl` - Recrawl specific backlink
 
 ### Socket.io Events
 - `join` - Join job room for updates
-- `progress` - Receive job progress updates
+- `progress` - Receive job progress updates  
 - `complete` - Job completion notification
+- `recrawl` - Recrawl specific backlink
+- `test` - Test socket connectivity
 
 ## Development
 
 ### Environment Variables
 Create `.env.local` in the root directory:
 ```
+# API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:4000
+
+# Authentication Credentials  
+APP_USER=your_username
+APP_PW=your_password
+
+# Ahrefs API Integration
+AHREFS_API=your_ahrefs_api_key
 ```
+
+**Important**: Update `APP_USER` and `APP_PW` with your desired login credentials. These are required for accessing the application.
 
 ### Project Structure
 ```
-├── app/                 # Next.js app directory
-│   ├── api/check/      # API route for job submission
-│   ├── globals.css     # Global styles
-│   ├── layout.tsx      # Root layout
-│   └── page.tsx        # Main page component
-├── components/         # React components
-│   ├── ui/            # Shadcn UI components
-│   ├── backlink-input.tsx
-│   └── backlink-results.tsx
-├── lib/               # Utilities
-├── server/            # Backend server
-│   ├── index.js       # Express server with Socket.io
-│   └── package.json   # Backend dependencies
-└── package.json       # Frontend dependencies
+├── app/                     # Next.js app directory
+│   ├── api/
+│   │   ├── auth/           # Authentication API routes
+│   │   │   ├── login/      # Login endpoint  
+│   │   │   ├── logout/     # Logout endpoint
+│   │   │   └── status/     # Auth status check
+│   │   ├── check/          # Backlink check job submission
+│   │   └── check-single/   # Single backlink check
+│   ├── globals.css         # Global styles
+│   ├── layout.tsx          # Root layout
+│   └── page.tsx            # Main page with auth logic
+├── components/             # React components
+│   ├── ui/                # Shadcn UI components
+│   ├── backlink-input.tsx # CSV upload & manual input
+│   ├── backlink-results.tsx # Results table with export
+│   └── login-form.tsx     # Authentication form
+├── lib/                   # Utilities (cn function, etc.)
+├── server/                # Backend Express server
+│   ├── index.js           # Main server with Socket.io & job processing
+│   └── package.json       # Backend dependencies
+└── package.json           # Frontend dependencies
 ```
 
-## Production Considerations
+## Production Deployment
 
-For production deployment, consider:
+### Vercel Deployment
+This application is optimized for Vercel deployment:
+
+1. **Environment Variables**: Set in Vercel project settings:
+   - `APP_USER` - Your login username
+   - `APP_PW` - Your login password
+   - `AHREFS_API` - Your Ahrefs API key
+   - `NEXT_PUBLIC_API_URL` - Your backend server URL
+
+2. **Backend Hosting**: Deploy the `server/` directory separately (Railway, Render, etc.)
+
+### Production Considerations
 
 1. **Job Queue**: Replace in-memory storage with Redis + BullMQ
-2. **Database**: Store job results in a proper database
-3. **Rate Limiting**: Add rate limiting for web scraping
+2. **Database**: Store job results in a proper database  
+3. **Rate Limiting**: Enhanced rate limiting for web scraping
 4. **Proxy Rotation**: Use proxy servers for large-scale checking
 5. **Error Handling**: Enhanced error handling and retry logic
-6. **Authentication**: Add user authentication if needed
-7. **Monitoring**: Add logging and monitoring
-8. **Scaling**: Use horizontal scaling for job processing
+6. **Monitoring**: Add logging and monitoring
+7. **Scaling**: Use horizontal scaling for job processing
+8. **Security**: Consider additional security measures for production use
 
 ## License
 

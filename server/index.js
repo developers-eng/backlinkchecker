@@ -410,6 +410,33 @@ io.on('connection', (socket) => {
   });
 });
 
+// Single backlink check endpoint
+app.post('/api/check-single', async (req, res) => {
+  try {
+    const { urlFrom, urlTo, anchorText } = req.body;
+    
+    if (!urlFrom || !urlTo) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const result = await checkBacklink(urlFrom, urlTo, anchorText || '');
+    
+    res.json({
+      urlFrom,
+      urlTo,
+      anchorText,
+      found: result.found,
+      statusCode: result.statusCode,
+      error: result.error,
+      matchDetails: result.matchDetails
+    });
+    
+  } catch (error) {
+    console.error('Error checking single backlink:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Backlink checker server running on port ${PORT}`);
