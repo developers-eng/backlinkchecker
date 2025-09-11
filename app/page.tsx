@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BacklinkInput } from "@/components/backlink-input";
 import { BacklinkResults } from "@/components/backlink-results";
-import { LoginForm } from "@/components/login-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export interface BacklinkJob {
   id: string;
@@ -21,7 +19,6 @@ export interface BacklinkJob {
 }
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<BacklinkJob[]>([]);
 
@@ -36,68 +33,13 @@ export default function Home() {
     ));
   };
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch("/api/auth/status");
-      const data = await response.json();
-      setIsAuthenticated(data.authenticated);
-    } catch (error) {
-      setIsAuthenticated(false);
-    }
-  };
-
-  const handleLogin = (success: boolean) => {
-    if (success) {
-      setIsAuthenticated(true);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      setIsAuthenticated(false);
-      setCurrentJobId(null);
-      setJobs([]);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
-
-  if (isAuthenticated === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold mb-2">Loading...</h1>
-          <p className="text-muted-foreground">Checking authentication status</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
-
   return (
     <div className="container mx-auto py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <div className="text-center flex-1">
-          <h1 className="text-4xl font-bold mb-2">MADX Backlink Checker</h1>
-          <p className="text-muted-foreground">
-            Check if your backlinks exist across multiple websites
-          </p>
-        </div>
-        <Button 
-          onClick={handleLogout} 
-          variant="outline"
-          className="ml-4"
-        >
-          Logout
-        </Button>
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-2">MADX Backlink Checker</h1>
+        <p className="text-muted-foreground">
+          Check if your backlinks exist across multiple websites
+        </p>
       </div>
 
       <Card>
