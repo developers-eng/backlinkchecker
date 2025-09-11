@@ -10,7 +10,3 @@ services:
         value: production
       - key: APP_USER
         value: madx
-      - key: APP_PW
-        fromSecret: APP_PW
-      - key: AHREFS_API
-        fromSecret: AHREFS_API
