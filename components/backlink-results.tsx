@@ -34,8 +34,10 @@ export function BacklinkResults({ jobId, jobs, onJobUpdate }: BacklinkResultsPro
 
   useEffect(() => {
     console.log('[SOCKET] Creating new socket connection');
-    // Connect to same server since everything runs together on Render
-    const newSocket = io(window.location.origin);
+    // Get backend URL from environment variable or default to current origin
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+    console.log('[SOCKET] Connecting to:', backendUrl);
+    const newSocket = io(backendUrl);
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
